@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart College Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h1>Smart College Assistant</h1>
+                </div>
+                <div class="header-controls">
+                    <button id="darkModeToggle" class="control-btn" title="Toggle Dark Mode">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button id="voiceToggle" class="control-btn" title="Voice Input">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <a href="/admin" class="admin-link" title="Admin Panel">
+                        <i class="fas fa-cog"></i>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Chat Interface -->
+        <main class="chat-container">
+            <div class="chat-header">
+                <div class="chat-info">
+                    <div class="avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="chat-details">
+                        <h3>Smart Assistant</h3>
+                        <span class="status">Online</span>
+                    </div>
+                </div>
+                <div class="chat-actions">
+                    <button id="clearChat" class="action-btn" title="Clear Chat">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot-message">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-text">
+                            <h4>👋 Welcome to Smart College Assistant!</h4>
+                            <p>I'm powered by Machine Learning and can help you with:</p>
+                            <ul>
+                                <li>📍 <strong>Find Classrooms:</strong> "Where is EW212?"</li>
+                                <li>👨‍🏫 <strong>Faculty Info:</strong> "Show CSE faculty"</li>
+                                <li>📅 <strong>Timetables:</strong> "Generate MECH timetable"</li>
+                                <li>🎤 <strong>Voice Input:</strong> Click the microphone button</li>
+                            </ul>
+                            <p>Try asking me anything!</p>
+                        </div>
+                        <div class="message-time">Just now</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <button class="quick-btn" onclick="askQuestion('Where is EW212?')">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Find Classroom
+                </button>
+                <button class="quick-btn" onclick="askQuestion('Show CSE faculty')">
+                    <i class="fas fa-users"></i>
+                    Faculty Info
+                </button>
+                <button class="quick-btn" onclick="askQuestion('Show CSE timetable')">
+                    <i class="fas fa-calendar"></i>
+                    Timetable
+                </button>
+                <button class="quick-btn" onclick="askQuestion('What can you do?')">
+                    <i class="fas fa-question-circle"></i>
+                    Help
+                </button>
+            </div>
+
+            <div class="chat-input-container">
+                <div class="input-wrapper">
+                    <input type="text" id="userInput" placeholder="Ask me anything about classrooms, faculty, or timetables..." autocomplete="off">
+                    <button id="sendBtn" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="input-hints" id="inputHints">
+                    <span class="hint">Try: "Where is ME101?" or "Show ECE faculty"</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Voice Recognition Modal -->
+    <div id="voiceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🎤 Voice Input</h3>
+                <button class="close-btn" onclick="closeVoiceModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="voice-indicator" id="voiceIndicator">
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <i class="fas fa-microphone"></i>
+                </div>
+                <p id="voiceStatus">Click to start speaking...</p>
+                <div class="voice-controls">
+                    <button id="startVoice" class="voice-btn">
+                        <i class="fas fa-play"></i>
+                        Start Listening
+                    </button>
+                    <button id="stopVoice" class="voice-btn" style="display: none;">
+                        <i class="fas fa-stop"></i>
+                        Stop Listening
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Faculty - Smart College Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <h2>Admin Panel</h2>
+                </div>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li class="menu-item">
+                    <a href="/admin/dashboard">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/admin/blocks">
+                        <i class="fas fa-building"></i>
+                        Blocks
+                    </a>
+                </li>
+                <li class="menu-item active">
+                    <a href="/admin/faculty">
+                        <i class="fas fa-users"></i>
+                        Faculty
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/admin/timetable">
+                        <i class="fas fa-calendar"></i>
+                        Timetable
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="sidebar-footer">
+                <a href="/admin/logout" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </div>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <div class="header-left">
+                    <h1>Manage Faculty</h1>
+                    <p>Add, edit, and manage faculty members</p>
+                </div>
+                <div class="header-right">
+                    <button class="add-btn" onclick="openAddFacultyModal()">
+                        <i class="fas fa-plus"></i>
+                        Add Faculty
+                    </button>
+                </div>
+            </header>
+            
+            <div class="content-body">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Designation</th>
+                                <th>Contact</th>
+                                <th>Room</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in faculty %}
+                            <tr>
+                                <td>{{ f.id }}</td>
+                                <td>{{ f.name }}</td>
+                                <td><span class="dept-badge">{{ f.department }}</span></td>
+                                <td>{{ f.designation or 'N/A' }}</td>
+                                <td>{{ f.contact or 'N/A' }}</td>
+                                <td>{{ f.room_number or 'N/A' }}</td>
+                                <td>
+                                    <button class="edit-btn" onclick="editFaculty({{ f.id }}, '{{ f.name }}', '{{ f.department }}', '{{ f.designation or '' }}', '{{ f.contact or '' }}', '{{ f.room_number or '' }}', {{ f.block_id or 'null' }})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="delete-btn" onclick="deleteFaculty({{ f.id }}, '{{ f.name }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Faculty Modal -->
+    <div id="addFacultyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Faculty</h3>
+                <button class="close-btn" onclick="closeAddFacultyModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addFacultyForm" class="modal-form">
+                <div class="form-group">
+                    <label for="facultyName">Name</label>
+                    <input type="text" id="facultyName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="facultyDepartment">Department</label>
+                    <select id="facultyDepartment" name="department" required>
+                        <option value="">Select Department</option>
+                        <option value="CSE">Computer Science & Engineering</option>
+                        <option value="ECE">Electronics & Communication Engineering</option>
+                        <option value="MECH">Mechanical Engineering</option>
+                        <option value="AE">Aeronautical Engineering</option>
+                        <option value="IT">Information Technology</option>
+                        <option value="AIDS">Artificial Intelligence & Data Science</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="facultyDesignation">Designation</label>
+                    <input type="text" id="facultyDesignation" name="designation">
+                </div>
+                <div class="form-group">
+                    <label for="facultyContact">Contact</label>
+                    <input type="text" id="facultyContact" name="contact" placeholder="Phone number">
+                </div>
+                <div class="form-group">
+                    <label for="facultyRoom">Room Number</label>
+                    <input type="text" id="facultyRoom" name="room_number" placeholder="e.g., EW201">
+                </div>
+                <div class="form-group">
+                    <label for="facultyBlock">Block</label>
+                    <select id="facultyBlock" name="block_id">
+                        <option value="">Select Block</option>
+                        {% for block in blocks %}
+                        <option value="{{ block.id }}">{{ block.name }} ({{ block.prefix }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeAddFacultyModal()">Cancel</button>
+                    <button type="submit" class="save-btn">Add Faculty</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Faculty Modal -->
+    <div id="editFacultyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Faculty</h3>
+                <button class="close-btn" onclick="closeEditFacultyModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="editFacultyForm" class="modal-form">
+                <input type="hidden" id="editFacultyId" name="id">
+                <div class="form-group">
+                    <label for="editFacultyName">Name</label>
+                    <input type="text" id="editFacultyName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="editFacultyDepartment">Department</label>
+                    <select id="editFacultyDepartment" name="department" required>
+                        <option value="">Select Department</option>
+                        <option value="CSE">Computer Science & Engineering</option>
+                        <option value="ECE">Electronics & Communication Engineering</option>
+                        <option value="MECH">Mechanical Engineering</option>
+                        <option value="AE">Aeronautical Engineering</option>
+                        <option value="IT">Information Technology</option>
+                        <option value="AIDS">Artificial Intelligence & Data Science</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editFacultyDesignation">Designation</label>
+                    <input type="text" id="editFacultyDesignation" name="designation">
+                </div>
+                <div class="form-group">
+                    <label for="editFacultyContact">Contact</label>
+                    <input type="text" id="editFacultyContact" name="contact" placeholder="Phone number">
+                </div>
+                <div class="form-group">
+                    <label for="editFacultyRoom">Room Number</label>
+                    <input type="text" id="editFacultyRoom" name="room_number" placeholder="e.g., EW201">
+                </div>
+                <div class="form-group">
+                    <label for="editFacultyBlock">Block</label>
+                    <select id="editFacultyBlock" name="block_id">
+                        <option value="">Select Block</option>
+                        {% for block in blocks %}
+                        <option value="{{ block.id }}">{{ block.name }} ({{ block.prefix }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeEditFacultyModal()">Cancel</button>
+                    <button type="submit" class="save-btn">Update Faculty</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Add Faculty Modal
+        function openAddFacultyModal() {
+            document.getElementById('addFacultyModal').style.display = 'block';
+        }
+
+        function closeAddFacultyModal() {
+            document.getElementById('addFacultyModal').style.display = 'none';
+            document.getElementById('addFacultyForm').reset();
+        }
+
+        // Edit Faculty Modal
+        function editFaculty(id, name, department, designation, contact, room, blockId) {
+            document.getElementById('editFacultyId').value = id;
+            document.getElementById('editFacultyName').value = name;
+            document.getElementById('editFacultyDepartment').value = department;
+            document.getElementById('editFacultyDesignation').value = designation;
+            document.getElementById('editFacultyContact').value = contact;
+            document.getElementById('editFacultyRoom').value = room;
+            document.getElementById('editFacultyBlock').value = blockId || '';
+            document.getElementById('editFacultyModal').style.display = 'block';
+        }
+
+        function closeEditFacultyModal() {
+            document.getElementById('editFacultyModal').style.display = 'none';
+        }
+
+        // Delete Faculty
+        function deleteFaculty(id, name) {
+            if (confirm(`Are you sure you want to delete faculty "${name}"?`)) {
+                fetch(`/api/admin/faculty/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting faculty');
+                });
+            }
+        }
+
+        // Form Submissions
+        document.getElementById('addFacultyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            fetch('/api/admin/faculty', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error adding faculty');
+            });
+        });
+
+        document.getElementById('editFacultyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            const id = data.id;
+            
+            fetch(`/api/admin/faculty/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating faculty');
+            });
+        });
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const addModal = document.getElementById('addFacultyModal');
+            const editModal = document.getElementById('editFacultyModal');
+            
+            if (event.target === addModal) {
+                closeAddFacultyModal();
+            }
+            if (event.target === editModal) {
+                closeEditFacultyModal();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Timetable - Smart College Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <h2>Admin Panel</h2>
+                </div>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li class="menu-item">
+                    <a href="/admin/dashboard">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/admin/blocks">
+                        <i class="fas fa-building"></i>
+                        Blocks
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/admin/faculty">
+                        <i class="fas fa-users"></i>
+                        Faculty
+                    </a>
+                </li>
+                <li class="menu-item active">
+                    <a href="/admin/timetable">
+                        <i class="fas fa-calendar"></i>
+                        Timetable
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="sidebar-footer">
+                <a href="/admin/logout" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </div>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <div class="header-left">
+                    <h1>Manage Timetable</h1>
+                    <p>Add, edit, and manage class schedules</p>
+                </div>
+                <div class="header-right">
+                    <button class="add-btn" onclick="openAddTimetableModal()">
+                        <i class="fas fa-plus"></i>
+                        Add Schedule
+                    </button>
+                </div>
+            </header>
+            
+            <div class="content-body">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Department</th>
+                                <th>Day</th>
+                                <th>Subject</th>
+                                <th>Faculty</th>
+                                <th>Room</th>
+                                <th>Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in timetable %}
+                            <tr>
+                                <td>{{ t.id }}</td>
+                                <td><span class="dept-badge">{{ t.department }}</span></td>
+                                <td>{{ t.day }}</td>
+                                <td>{{ t.subject }}</td>
+                                <td>{{ t.faculty_name }}</td>
+                                <td>{{ t.room_number }}</td>
+                                <td>{{ t.time_slot }}</td>
+                                <td>
+                                    <button class="edit-btn" onclick="editTimetable({{ t.id }}, '{{ t.department }}', '{{ t.day }}', '{{ t.subject }}', '{{ t.faculty_name }}', '{{ t.room_number }}', '{{ t.time_slot }}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="delete-btn" onclick="deleteTimetable({{ t.id }}, '{{ t.subject }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Timetable Modal -->
+    <div id="addTimetableModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Schedule</h3>
+                <button class="close-btn" onclick="closeAddTimetableModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addTimetableForm" class="modal-form">
+                <div class="form-group">
+                    <label for="timetableDepartment">Department</label>
+                    <select id="timetableDepartment" name="department" required>
+                        <option value="">Select Department</option>
+                        <option value="CSE">Computer Science & Engineering</option>
+                        <option value="ECE">Electronics & Communication Engineering</option>
+                        <option value="MECH">Mechanical Engineering</option>
+                        <option value="AE">Aeronautical Engineering</option>
+                        <option value="IT">Information Technology</option>
+                        <option value="AIDS">Artificial Intelligence & Data Science</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="timetableDay">Day</label>
+                    <select id="timetableDay" name="day" required>
+                        <option value="">Select Day</option>
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                        <option value="Saturday">Saturday</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="timetableSubject">Subject</label>
+                    <input type="text" id="timetableSubject" name="subject" required placeholder="e.g., Data Structures">
+                </div>
+                <div class="form-group">
+                    <label for="timetableFaculty">Faculty Name</label>
+                    <input type="text" id="timetableFaculty" name="faculty_name" required placeholder="e.g., Dr. John Smith">
+                </div>
+                <div class="form-group">
+                    <label for="timetableRoom">Room Number</label>
+                    <input type="text" id="timetableRoom" name="room_number" required placeholder="e.g., EW201">
+                </div>
+                <div class="form-group">
+                    <label for="timetableTime">Time Slot</label>
+                    <select id="timetableTime" name="time_slot" required>
+                        <option value="">Select Time</option>
+                        <option value="9:00-10:00">9:00-10:00</option>
+                        <option value="10:00-11:00">10:00-11:00</option>
+                        <option value="11:00-12:00">11:00-12:00</option>
+                        <option value="12:00-1:00">12:00-1:00</option>
+                        <option value="2:00-3:00">2:00-3:00</option>
+                        <option value="3:00-4:00">3:00-4:00</option>
+                        <option value="4:00-5:00">4:00-5:00</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeAddTimetableModal()">Cancel</button>
+                    <button type="submit" class="save-btn">Add Schedule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Timetable Modal -->
+    <div id="editTimetableModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Schedule</h3>
+                <button class="close-btn" onclick="closeEditTimetableModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="editTimetableForm" class="modal-form">
+                <input type="hidden" id="editTimetableId" name="id">
+                <div class="form-group">
+                    <label for="editTimetableDepartment">Department</label>
+                    <select id="editTimetableDepartment" name="department" required>
+                        <option value="">Select Department</option>
+                        <option value="CSE">Computer Science & Engineering</option>
+                        <option value="ECE">Electronics & Communication Engineering</option>
+                        <option value="MECH">Mechanical Engineering</option>
+                        <option value="AE">Aeronautical Engineering</option>
+                        <option value="IT">Information Technology</option>
+                        <option value="AIDS">Artificial Intelligence & Data Science</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editTimetableDay">Day</label>
+                    <select id="editTimetableDay" name="day" required>
+                        <option value="">Select Day</option>
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                        <option value="Saturday">Saturday</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editTimetableSubject">Subject</label>
+                    <input type="text" id="editTimetableSubject" name="subject" required placeholder="e.g., Data Structures">
+                </div>
+                <div class="form-group">
+                    <label for="editTimetableFaculty">Faculty Name</label>
+                    <input type="text" id="editTimetableFaculty" name="faculty_name" required placeholder="e.g., Dr. John Smith">
+                </div>
+                <div class="form-group">
+                    <label for="editTimetableRoom">Room Number</label>
+                    <input type="text" id="editTimetableRoom" name="room_number" required placeholder="e.g., EW201">
+                </div>
+                <div class="form-group">
+                    <label for="editTimetableTime">Time Slot</label>
+                    <select id="editTimetableTime" name="time_slot" required>
+                        <option value="">Select Time</option>
+                        <option value="9:00-10:00">9:00-10:00</option>
+                        <option value="10:00-11:00">10:00-11:00</option>
+                        <option value="11:00-12:00">11:00-12:00</option>
+                        <option value="12:00-1:00">12:00-1:00</option>
+                        <option value="2:00-3:00">2:00-3:00</option>
+                        <option value="3:00-4:00">3:00-4:00</option>
+                        <option value="4:00-5:00">4:00-5:00</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeEditTimetableModal()">Cancel</button>
+                    <button type="submit" class="save-btn">Update Schedule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Add Timetable Modal
+        function openAddTimetableModal() {
+            document.getElementById('addTimetableModal').style.display = 'block';
+        }
+
+        function closeAddTimetableModal() {
+            document.getElementById('addTimetableModal').style.display = 'none';
+            document.getElementById('addTimetableForm').reset();
+        }
+
+        // Edit Timetable Modal
+        function editTimetable(id, department, day, subject, faculty, room, time) {
+            document.getElementById('editTimetableId').value = id;
+            document.getElementById('editTimetableDepartment').value = department;
+            document.getElementById('editTimetableDay').value = day;
+            document.getElementById('editTimetableSubject').value = subject;
+            document.getElementById('editTimetableFaculty').value = faculty;
+            document.getElementById('editTimetableRoom').value = room;
+            document.getElementById('editTimetableTime').value = time;
+            document.getElementById('editTimetableModal').style.display = 'block';
+        }
+
+        function closeEditTimetableModal() {
+            document.getElementById('editTimetableModal').style.display = 'none';
+        }
+
+        // Delete Timetable
+        function deleteTimetable(id, subject) {
+            if (confirm(`Are you sure you want to delete the schedule for "${subject}"?`)) {
+                fetch(`/api/admin/timetable/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting schedule');
+                });
+            }
+        }
+
+        // Form Submissions
+        document.getElementById('addTimetableForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            fetch('/api/admin/timetable', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error adding schedule');
+            });
+        });
+
+        document.getElementById('editTimetableForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            const id = data.id;
+            
+            fetch(`/api/admin/timetable/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating schedule');
+            });
+        });
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const addModal = document.getElementById('addTimetableModal');
+            const editModal = document.getElementById('editTimetableModal');
+            
+            if (event.target === addModal) {
+                closeAddTimetableModal();
+            }
+            if (event.target === editModal) {
+                closeEditTimetableModal();
+            }
+        }
+    </script>
+</body>
+</html>

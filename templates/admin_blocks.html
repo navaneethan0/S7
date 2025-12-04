@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Blocks - Smart College Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <h2>Admin Panel</h2>
+                </div>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li class="menu-item">
+                    <a href="/admin/dashboard">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="menu-item active">
+                    <a href="/admin/blocks">
+                        <i class="fas fa-building"></i>
+                        Blocks
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/admin/faculty">
+                        <i class="fas fa-users"></i>
+                        Faculty
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/admin/timetable">
+                        <i class="fas fa-calendar"></i>
+                        Timetable
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="sidebar-footer">
+                <a href="/admin/logout" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </div>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <div class="header-left">
+                    <h1>Manage Blocks</h1>
+                    <p>Add, edit, and manage building blocks</p>
+                </div>
+                <div class="header-right">
+                    <button class="add-btn" onclick="openAddBlockModal()">
+                        <i class="fas fa-plus"></i>
+                        Add Block
+                    </button>
+                </div>
+            </header>
+            
+            <div class="content-body">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Prefix</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for block in blocks %}
+                            <tr>
+                                <td>{{ block.id }}</td>
+                                <td>{{ block.name }}</td>
+                                <td><span class="prefix-badge">{{ block.prefix }}</span></td>
+                                <td>{{ block.description or 'No description' }}</td>
+                                <td>
+                                    <button class="edit-btn" onclick="editBlock({{ block.id }}, '{{ block.name }}', '{{ block.prefix }}', '{{ block.description or '' }}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="delete-btn" onclick="deleteBlock({{ block.id }}, '{{ block.name }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Block Modal -->
+    <div id="addBlockModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Block</h3>
+                <button class="close-btn" onclick="closeAddBlockModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addBlockForm" class="modal-form">
+                <div class="form-group">
+                    <label for="blockName">Block Name</label>
+                    <input type="text" id="blockName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="blockPrefix">Prefix</label>
+                    <input type="text" id="blockPrefix" name="prefix" required maxlength="10">
+                </div>
+                <div class="form-group">
+                    <label for="blockDescription">Description</label>
+                    <textarea id="blockDescription" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeAddBlockModal()">Cancel</button>
+                    <button type="submit" class="save-btn">Add Block</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Block Modal -->
+    <div id="editBlockModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Block</h3>
+                <button class="close-btn" onclick="closeEditBlockModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="editBlockForm" class="modal-form">
+                <input type="hidden" id="editBlockId" name="id">
+                <div class="form-group">
+                    <label for="editBlockName">Block Name</label>
+                    <input type="text" id="editBlockName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="editBlockPrefix">Prefix</label>
+                    <input type="text" id="editBlockPrefix" name="prefix" required maxlength="10">
+                </div>
+                <div class="form-group">
+                    <label for="editBlockDescription">Description</label>
+                    <textarea id="editBlockDescription" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeEditBlockModal()">Cancel</button>
+                    <button type="submit" class="save-btn">Update Block</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Add Block Modal
+        function openAddBlockModal() {
+            document.getElementById('addBlockModal').style.display = 'block';
+        }
+
+        function closeAddBlockModal() {
+            document.getElementById('addBlockModal').style.display = 'none';
+            document.getElementById('addBlockForm').reset();
+        }
+
+        // Edit Block Modal
+        function editBlock(id, name, prefix, description) {
+            document.getElementById('editBlockId').value = id;
+            document.getElementById('editBlockName').value = name;
+            document.getElementById('editBlockPrefix').value = prefix;
+            document.getElementById('editBlockDescription').value = description;
+            document.getElementById('editBlockModal').style.display = 'block';
+        }
+
+        function closeEditBlockModal() {
+            document.getElementById('editBlockModal').style.display = 'none';
+        }
+
+        // Delete Block
+        function deleteBlock(id, name) {
+            if (confirm(`Are you sure you want to delete the block "${name}"?`)) {
+                fetch(`/api/admin/blocks/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting block');
+                });
+            }
+        }
+
+        // Form Submissions
+        document.getElementById('addBlockForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            fetch('/api/admin/blocks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error adding block');
+            });
+        });
+
+        document.getElementById('editBlockForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            const id = data.id;
+            
+            fetch(`/api/admin/blocks/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating block');
+            });
+        });
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const addModal = document.getElementById('addBlockModal');
+            const editModal = document.getElementById('editBlockModal');
+            
+            if (event.target === addModal) {
+                closeAddBlockModal();
+            }
+            if (event.target === editModal) {
+                closeEditBlockModal();
+            }
+        }
+    </script>
+</body>
+</html>
