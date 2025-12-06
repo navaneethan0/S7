@@ -99,12 +99,16 @@ class EnhancedNLPProcessor:
         }
         
         if nlp:
-            doc = nlp(text)
-            for ent in doc.ents:
-                if ent.label_ == "PERSON":
-                    entities['names'].append(ent.text)
-                elif ent.label_ in ["ORG", "GPE"]:
-                    entities['departments'].append(ent.text)
+            try:
+                doc = nlp(text)
+                for ent in doc.ents:
+                    if ent.label_ == "PERSON":
+                        entities['names'].append(ent.text)
+                    elif ent.label_ in ["ORG", "GPE"]:
+                        entities['departments'].append(ent.text)
+            except Exception as e:
+                # If spaCy processing fails, continue without entity extraction
+                print(f"spaCy entity extraction error: {e}")
         
         # Extract room numbers and block codes
         room_pattern = r'\b[A-Z]{2}\d{3}\b'
@@ -526,21 +530,46 @@ def admin_logout():
 # API Routes
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    user_message = request.json.get('message', '')
-    
-    if not user_message:
-        return jsonify({'error': 'No message provided'}), 400
-    
-    # Use enhanced NLP processing
-    intent, confidence = nlp_processor.enhanced_intent_classification(user_message)
-    
-    response = handle_intent_enhanced(intent, user_message, confidence)
-    
-    return jsonify({
-        'response': response,
-        'intent': intent,
-        'confidence': float(confidence)
-    })
+    try:
+        user_message = request.json.get('message', '')
+        
+        if not user_message:
+            return jsonify({'error': 'No message provided'}), 400
+        
+        # Use enhanced NLP processing
+        try:
+            intent, confidence = nlp_processor.enhanced_intent_classification(user_message)
+        except Exception as e:
+            # Fallback to basic intent detection if NLP fails
+            print(f"NLP processing error: {e}")
+            intent = 'greeting'
+            confidence = 0.5
+        
+        try:
+            response = handle_intent_enhanced(intent, user_message, confidence)
+        except Exception as e:
+            # Fallback response if intent handling fails
+            print(f"Intent handling error: {e}")
+            if intent == 'greeting':
+                response = handle_greetings()
+            else:
+                response = "I'm here to help! Could you please rephrase your question?"
+        
+        return jsonify({
+            'response': response,
+            'intent': intent,
+            'confidence': float(confidence)
+        })
+    except Exception as e:
+        # Catch any other unexpected errors
+        print(f"Chat endpoint error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'response': "I'm sorry, I encountered an error. Please try again or rephrase your question.",
+            'intent': 'error',
+            'confidence': 0.0
+        }), 200  # Return 200 so frontend doesn't treat it as HTTP error
 
 def handle_intent_enhanced(intent, message, confidence):
     """Enhanced intent handler with fuzzy matching and semantic search"""
@@ -679,139 +708,187 @@ def handle_help():
 # Enhanced Handler Functions with Fuzzy Matching and Semantic Search
 def handle_find_room_enhanced(message):
     """Enhanced room location queries with fuzzy matching"""
-    entities = nlp_processor.extract_entities(message)
-    
-    # Check for room codes in entities
-    if entities['rooms']:
-        room_code = entities['rooms'][0]
-        prefix = room_code[:2]
+    try:
+        entities = nlp_processor.extract_entities(message)
         
-        block = Block.query.filter_by(prefix=prefix).first()
-        if block:
-            return f"📍 **{room_code}** is located in **{block.name}**\n\n{block.description or 'No additional information available.'}"
-        else:
-            return f"❌ Sorry, I couldn't find information for room {room_code}"
-    
-    # Check for block prefixes
-    if entities['blocks']:
-        block_prefix = entities['blocks'][0]
-        block = Block.query.filter_by(prefix=block_prefix).first()
-        if block:
-            return f"📍 **{block_prefix} Block** refers to **{block.name}**\n\n{block.description or 'No additional information available.'}"
-    
-    return "Please provide a valid room code (e.g., EW212, ME101, SF302) or block prefix (EW, WW, SF, ME, AE, AS)"
+        # Check for room codes in entities
+        if entities['rooms']:
+            room_code = entities['rooms'][0]
+            prefix = room_code[:2]
+            
+            try:
+                block = Block.query.filter_by(prefix=prefix).first()
+                if block:
+                    return f"📍 **{room_code}** is located in **{block.name}**\n\n{block.description or 'No additional information available.'}"
+                else:
+                    return f"❌ Sorry, I couldn't find information for room {room_code}"
+            except Exception as e:
+                print(f"Database query error: {e}")
+                return f"Please provide a valid room code (e.g., EW212, ME101, SF302)"
+        
+        # Check for block prefixes
+        if entities['blocks']:
+            block_prefix = entities['blocks'][0]
+            try:
+                block = Block.query.filter_by(prefix=block_prefix).first()
+                if block:
+                    return f"📍 **{block_prefix} Block** refers to **{block.name}**\n\n{block.description or 'No additional information available.'}"
+            except Exception as e:
+                print(f"Database query error: {e}")
+        
+        return "Please provide a valid room code (e.g., EW212, ME101, SF302) or block prefix (EW, WW, SF, ME, AE, AS)"
+    except Exception as e:
+        print(f"Error in handle_find_room_enhanced: {e}")
+        return "I'm having trouble processing your request. Please try again with a room code like EW212 or ME101."
 
 def handle_faculty_info_enhanced(message):
     """Enhanced faculty information with fuzzy matching and semantic search"""
-    # Get all faculty from database
-    all_faculty = Faculty.query.all()
-    
-    if not all_faculty:
-        return "No faculty information available in the database."
-    
-    # Try fuzzy matching first
-    fuzzy_match, fuzzy_score = nlp_processor.fuzzy_match_faculty(message, all_faculty, threshold=50)
-    
-    # Try semantic search
-    semantic_match, semantic_score = nlp_processor.semantic_search_faculty(message, all_faculty, threshold=0.4)
-    
-    # Choose the best match
-    best_match = None
-    match_type = ""
-    
-    if fuzzy_match and fuzzy_score >= 60:
-        best_match = fuzzy_match
-        match_type = f"fuzzy match (score: {fuzzy_score:.1f}%)"
-    elif semantic_match and semantic_score >= 0.5:
-        best_match = semantic_match
-        match_type = f"semantic match (score: {semantic_score:.1f})"
-    
-    if best_match:
-        response = f"👨‍🏫 **Faculty Found** ({match_type}):\n\n"
-        response += f"**Name:** {best_match.name}\n"
-        response += f"**Department:** {best_match.department}\n"
-        if best_match.designation:
-            response += f"**Designation:** {best_match.designation}\n"
-        if best_match.contact:
-            response += f"**Contact:** {best_match.contact}\n"
-        if best_match.room_number:
-            response += f"**Room:** {best_match.room_number}\n"
+    try:
+        # Get all faculty from database
+        try:
+            all_faculty = Faculty.query.all()
+        except Exception as e:
+            print(f"Database query error: {e}")
+            return "I'm having trouble accessing the faculty database. Please try again later."
         
-        return response
-    
-    # If no specific match, try department-based search
-    entities = nlp_processor.extract_entities(message)
-    departments = ['CSE', 'ECE', 'MECH', 'AE', 'IT', 'AIDS']
-    
-    # Check for department mentions
-    found_dept = None
-    for dept in departments:
-        if dept.lower() in message.lower() or any(dept.lower() in word.lower() for word in message.split()):
-            found_dept = dept
-            break
-    
-    if found_dept:
-        faculty = Faculty.query.filter_by(department=found_dept).all()
-        if faculty:
-            response = f"👨‍🏫 **{found_dept} Faculty:**\n\n"
-            for f in faculty:
-                response += f"• **{f.name}** - {f.designation or 'Faculty'}\n"
-                if f.contact:
-                    response += f"  📞 {f.contact}\n"
-                if f.room_number:
-                    response += f"  🏢 Room: {f.room_number}\n"
-                response += "\n"
+        if not all_faculty:
+            return "No faculty information available in the database."
+        
+        # Try fuzzy matching first
+        try:
+            fuzzy_match, fuzzy_score = nlp_processor.fuzzy_match_faculty(message, all_faculty, threshold=50)
+        except Exception as e:
+            print(f"Fuzzy matching error: {e}")
+            fuzzy_match, fuzzy_score = None, 0
+        
+        # Try semantic search
+        try:
+            semantic_match, semantic_score = nlp_processor.semantic_search_faculty(message, all_faculty, threshold=0.4)
+        except Exception as e:
+            print(f"Semantic search error: {e}")
+            semantic_match, semantic_score = None, 0
+        
+        # Choose the best match
+        best_match = None
+        match_type = ""
+        
+        if fuzzy_match and fuzzy_score >= 60:
+            best_match = fuzzy_match
+            match_type = f"fuzzy match (score: {fuzzy_score:.1f}%)"
+        elif semantic_match and semantic_score >= 0.5:
+            best_match = semantic_match
+            match_type = f"semantic match (score: {semantic_score:.1f})"
+        
+        if best_match:
+            response = f"👨‍🏫 **Faculty Found** ({match_type}):\n\n"
+            response += f"**Name:** {best_match.name}\n"
+            response += f"**Department:** {best_match.department}\n"
+            if best_match.designation:
+                response += f"**Designation:** {best_match.designation}\n"
+            if best_match.contact:
+                response += f"**Contact:** {best_match.contact}\n"
+            if best_match.room_number:
+                response += f"**Room:** {best_match.room_number}\n"
+            
             return response
-        else:
-            return f"No faculty found for {found_dept} department"
-    
-    return "I couldn't find a specific faculty member. Please try:\n• Providing a more specific name\n• Mentioning the department (CSE, ECE, MECH, AE, IT, AIDS)\n• Using partial names (e.g., 'Pri' for 'Priya')"
+        
+        # If no specific match, try department-based search
+        try:
+            entities = nlp_processor.extract_entities(message)
+            departments = ['CSE', 'ECE', 'MECH', 'AE', 'IT', 'AIDS']
+            
+            # Check for department mentions
+            found_dept = None
+            for dept in departments:
+                if dept.lower() in message.lower() or any(dept.lower() in word.lower() for word in message.split()):
+                    found_dept = dept
+                    break
+            
+            if found_dept:
+                try:
+                    faculty = Faculty.query.filter_by(department=found_dept).all()
+                    if faculty:
+                        response = f"👨‍🏫 **{found_dept} Faculty:**\n\n"
+                        for f in faculty:
+                            response += f"• **{f.name}** - {f.designation or 'Faculty'}\n"
+                            if f.contact:
+                                response += f"  📞 {f.contact}\n"
+                            if f.room_number:
+                                response += f"  🏢 Room: {f.room_number}\n"
+                            response += "\n"
+                        return response
+                    else:
+                        return f"No faculty found for {found_dept} department"
+                except Exception as e:
+                    print(f"Department query error: {e}")
+        except Exception as e:
+            print(f"Entity extraction error: {e}")
+        
+        return "I couldn't find a specific faculty member. Please try:\n• Providing a more specific name\n• Mentioning the department (CSE, ECE, MECH, AE, IT, AIDS)\n• Using partial names (e.g., 'Pri' for 'Priya')"
+    except Exception as e:
+        print(f"Error in handle_faculty_info_enhanced: {e}")
+        return "I'm having trouble accessing faculty information. Please try again later."
 
 def handle_timetable_enhanced(message):
     """Enhanced timetable queries with fuzzy department and day matching"""
-    # Determine department
-    departments = ['CSE', 'ECE', 'MECH', 'AE', 'IT', 'AIDS']
-    found_dept = None
-    for dept in departments:
-        if dept.lower() in message.lower():
-            found_dept = dept
-            break
-    if not found_dept:
-        dept_list = [dept.lower() for dept in departments]
-        fuzzy_dept, _ = nlp_processor.fuzzy_match_department(message, dept_list, threshold=50)
-        if fuzzy_dept:
-            found_dept = fuzzy_dept.upper()
+    try:
+        # Determine department
+        departments = ['CSE', 'ECE', 'MECH', 'AE', 'IT', 'AIDS']
+        found_dept = None
+        for dept in departments:
+            if dept.lower() in message.lower():
+                found_dept = dept
+                break
+        if not found_dept:
+            try:
+                dept_list = [dept.lower() for dept in departments]
+                fuzzy_dept, _ = nlp_processor.fuzzy_match_department(message, dept_list, threshold=50)
+                if fuzzy_dept:
+                    found_dept = fuzzy_dept.upper()
+            except Exception as e:
+                print(f"Fuzzy department matching error: {e}")
 
-    if not found_dept:
-        return "Please specify a department (CSE, ECE, MECH, AE, IT, AIDS) to get timetable information"
+        if not found_dept:
+            return "Please specify a department (CSE, ECE, MECH, AE, IT, AIDS) to get timetable information"
 
-    # Determine day
-    extracted_day = nlp_processor.extract_day(message)
-    if extracted_day in (None, ''):
-        day = datetime.now().strftime('%A')
-    elif extracted_day == 'today':
-        day = datetime.now().strftime('%A')
-    elif extracted_day == 'tomorrow':
-        day = (datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + pd.Timedelta(days=1)).strftime('%A')
-    else:
-        day = extracted_day
+        # Determine day
+        try:
+            extracted_day = nlp_processor.extract_day(message)
+            if extracted_day in (None, ''):
+                day = datetime.now().strftime('%A')
+            elif extracted_day == 'today':
+                day = datetime.now().strftime('%A')
+            elif extracted_day == 'tomorrow':
+                day = (datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + pd.Timedelta(days=1)).strftime('%A')
+            else:
+                day = extracted_day
+        except Exception as e:
+            print(f"Day extraction error: {e}")
+            day = datetime.now().strftime('%A')
 
-    # Fetch timetable for department and day, ordered by time_slot
-    entries = (Timetable.query
-               .filter_by(department=found_dept, day=day)
-               .order_by(Timetable.time_slot.asc())
-               .all())
+        # Fetch timetable for department and day, ordered by time_slot
+        try:
+            entries = (Timetable.query
+                       .filter_by(department=found_dept, day=day)
+                       .order_by(Timetable.time_slot.asc())
+                       .all())
+        except Exception as e:
+            print(f"Timetable query error: {e}")
+            return "I'm having trouble accessing the timetable database. Please try again later."
 
-    if not entries:
-        return f"No classes scheduled for {day} in {found_dept} department."
+        if not entries:
+            return f"No classes scheduled for {day} in {found_dept} department."
 
-    # Format response
-    response_lines = [f"📅 **{found_dept} - {day} Timetable:**\n"]
-    for e in entries:
-        response_lines.append(
-            f"• Time: {e.time_slot} | Subject: {e.subject} | Faculty: {e.faculty_name} | Room: {e.room_number}"
-        )
-    return "\n".join(response_lines)
+        # Format response
+        response_lines = [f"📅 **{found_dept} - {day} Timetable:**\n"]
+        for e in entries:
+            response_lines.append(
+                f"• Time: {e.time_slot} | Subject: {e.subject} | Faculty: {e.faculty_name} | Room: {e.room_number}"
+            )
+        return "\n".join(response_lines)
+    except Exception as e:
+        print(f"Error in handle_timetable_enhanced: {e}")
+        return "I'm having trouble processing your timetable request. Please try again later."
 
 def handle_department_info_enhanced(message):
     """Enhanced department information with fuzzy matching"""
