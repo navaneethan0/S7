@@ -263,6 +263,16 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: nowrap;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.header-left {
+    flex: 1;
+    min-width: 0;
+    margin-right: 1rem;
 }
 
 .header-left h1 {
@@ -277,9 +287,11 @@ body {
 }
 
 .header-right {
-    display: flex;
+    display: flex !important;
     align-items: center;
     gap: 1rem;
+    flex-shrink: 0;
+    min-width: fit-content;
 }
 
 .view-site-btn {
@@ -536,17 +548,21 @@ body {
 }
 
 .add-btn {
-    background: linear-gradient(135deg, var(--success-color) 0%, #38a169 100%);
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, var(--success-color) 0%, #38a169 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 0.75rem 1.5rem !important;
     border-radius: 10px;
     cursor: pointer;
     font-weight: 500;
-    display: flex;
+    display: flex !important;
     align-items: center;
     gap: 0.5rem;
     transition: all 0.3s ease;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative;
+    z-index: 10;
 }
 
 .add-btn:hover {
