@@ -28,12 +28,17 @@ except LookupError:
     nltk.download('punkt')
     nltk.download('stopwords')
 
-# Initialize spaCy model
+# Initialize spaCy model (mandatory)
 try:
     nlp = spacy.load("en_core_web_sm")
+    print("✅ spaCy model loaded successfully")
 except OSError:
-    print("spaCy English model not found. Please install it with: python -m spacy download en_core_web_sm")
+    print("❌ ERROR: spaCy English model not found!")
+    print("Please install it with: python -m spacy download en_core_web_sm")
+    print("The application requires spaCy to function properly.")
     nlp = None
+    # Uncomment the line below to make the app fail if spaCy is not available
+    # raise RuntimeError("spaCy model is required but not found. Please install it.")
 
 # Initialize stemmer
 stemmer = PorterStemmer()
