@@ -641,18 +641,38 @@ def chat():
 def handle_intent_enhanced(intent, message, confidence):
     """Enhanced intent handler with fuzzy matching and semantic search"""
     
-    if intent == 'location_query':
-        return handle_find_room_enhanced(message)
-    elif intent == 'faculty_info':
-        return handle_faculty_info_enhanced(message)
-    elif intent == 'timetable_info':
-        return handle_timetable_enhanced(message)
-    elif intent == 'department_info':
-        return handle_department_info_enhanced(message)
-    elif intent == 'greeting':
-        return handle_greetings()
-    else:
-        return "I'm not sure how to help with that. Could you please rephrase your question?"
+    print(f"🔧 Handling intent: {intent} for message: '{message}'")
+    
+    try:
+        if intent == 'location_query':
+            return handle_find_room_enhanced(message)
+        elif intent == 'faculty_info':
+            return handle_faculty_info_enhanced(message)
+        elif intent == 'timetable_info':
+            return handle_timetable_enhanced(message)
+        elif intent == 'department_info':
+            return handle_department_info_enhanced(message)
+        elif intent == 'greeting':
+            return handle_greetings()
+        else:
+            # Try to infer intent from message content
+            message_lower = message.lower()
+            if any(word in message_lower for word in ['faculty', 'teacher', 'professor', 'cse', 'ece', 'mech']):
+                print("🔄 Inferring faculty_info from message content")
+                return handle_faculty_info_enhanced(message)
+            elif any(word in message_lower for word in ['where', 'locate', 'find', 'ew', 'me', 'sf', 'room']):
+                print("🔄 Inferring location_query from message content")
+                return handle_find_room_enhanced(message)
+            elif any(word in message_lower for word in ['timetable', 'schedule', 'class']):
+                print("🔄 Inferring timetable_info from message content")
+                return handle_timetable_enhanced(message)
+            else:
+                return "I'm not sure how to help with that. Could you please rephrase your question?"
+    except Exception as e:
+        print(f"❌ Error in handle_intent_enhanced: {e}")
+        import traceback
+        traceback.print_exc()
+        raise  # Re-raise to be caught by caller
 
 def handle_intent(intent, message, confidence):
     """Handle different intents and return appropriate responses"""
