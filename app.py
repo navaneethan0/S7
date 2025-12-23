@@ -513,10 +513,16 @@ def admin_blocks():
         return redirect(url_for('admin_login'))
     
     try:
+        # Ensure database is initialized
+        db.create_all()
+        
         blocks = Block.query.all()
+        print(f"Retrieved {len(blocks)} blocks")
         return render_template('admin_blocks.html', blocks=blocks)
     except Exception as e:
         print(f"Database query error in admin_blocks: {e}")
+        import traceback
+        traceback.print_exc()
         return render_template('admin_blocks.html', blocks=[])
 
 @app.route('/admin/faculty')
@@ -525,11 +531,17 @@ def admin_faculty():
         return redirect(url_for('admin_login'))
     
     try:
+        # Ensure database is initialized
+        db.create_all()
+        
         faculty = Faculty.query.all()
         blocks = Block.query.all()
+        print(f"Retrieved {len(faculty)} faculty and {len(blocks)} blocks")
         return render_template('admin_faculty.html', faculty=faculty, blocks=blocks)
     except Exception as e:
         print(f"Database query error in admin_faculty: {e}")
+        import traceback
+        traceback.print_exc()
         # Return empty lists if database query fails
         return render_template('admin_faculty.html', faculty=[], blocks=[])
 
@@ -539,11 +551,17 @@ def admin_timetable():
         return redirect(url_for('admin_login'))
     
     try:
+        # Ensure database is initialized
+        db.create_all()
+        
         timetable = Timetable.query.all()
         faculty = Faculty.query.all()
+        print(f"Retrieved {len(timetable)} timetable entries and {len(faculty)} faculty")
         return render_template('admin_timetable.html', timetable=timetable, faculty=faculty)
     except Exception as e:
         print(f"Database query error in admin_timetable: {e}")
+        import traceback
+        traceback.print_exc()
         return render_template('admin_timetable.html', timetable=[], faculty=[])
 
 @app.route('/admin/logout')
