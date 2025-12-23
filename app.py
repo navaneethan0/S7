@@ -574,26 +574,50 @@ def admin_logout():
 @app.route('/api/chat', methods=['POST'])
 def chat():
     try:
-        user_message = request.json.get('message', '')
+        user_message = request.json.get('message', '').strip()
         
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
         
+        print(f"📨 Received message: '{user_message}'")
+        
         # Use enhanced NLP processing
         try:
             intent, confidence = nlp_processor.enhanced_intent_classification(user_message)
+            print(f"🎯 Intent detected: {intent} (confidence: {confidence:.2f})")
         except Exception as e:
             # Fallback to basic intent detection if NLP fails
-            print(f"NLP processing error: {e}")
-            intent = 'greeting'
+            print(f"❌ NLP processing error: {e}")
+            import traceback
+            traceback.print_exc()
+            # Try to detect intent manually
+            user_lower = user_message.lower()
+            if any(word in user_lower for word in ['faculty', 'teacher', 'professor', 'staff']):
+                intent = 'faculty_info'
+            elif any(word in user_lower for word in ['where', 'locate', 'find', 'room', 'ew', 'me', 'sf', 'ww', 'ae']):
+                intent = 'location_query'
+            elif any(word in user_lower for word in ['timetable', 'schedule', 'class', 'time']):
+                intent = 'timetable_info'
+            else:
+                intent = 'greeting'
             confidence = 0.5
+            print(f"🔄 Fallback intent: {intent}")
         
         try:
             response = handle_intent_enhanced(intent, user_message, confidence)
+            print(f"✅ Response generated: {response[:50]}...")
         except Exception as e:
             # Fallback response if intent handling fails
-            print(f"Intent handling error: {e}")
-            if intent == 'greeting':
+            print(f"❌ Intent handling error: {e}")
+            import traceback
+            traceback.print_exc()
+            # Try to handle based on keywords even if handler fails
+            user_lower = user_message.lower()
+            if 'faculty' in user_lower or 'cse' in user_lower or 'ece' in user_lower:
+                response = "I'm having trouble accessing the faculty database. Please try again later."
+            elif 'ew' in user_lower or 'me' in user_lower or 'room' in user_lower:
+                response = "I'm having trouble finding room information. Please check the room code format (e.g., EW212)."
+            elif intent == 'greeting':
                 response = handle_greetings()
             else:
                 response = "I'm here to help! Could you please rephrase your question?"
@@ -605,7 +629,7 @@ def chat():
         })
     except Exception as e:
         # Catch any other unexpected errors
-        print(f"Chat endpoint error: {e}")
+        print(f"❌ Chat endpoint error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
