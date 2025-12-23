@@ -328,7 +328,14 @@ nlp_processor = EnhancedNLPProcessor()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///smart_college_assistant.db'
+
+# Configure database path - use instance folder for persistence on Render
+import os
+basedir = os.path.abspath(os.path.dirname(__file__))
+instance_path = os.path.join(basedir, 'instance')
+os.makedirs(instance_path, exist_ok=True)
+db_path = os.path.join(instance_path, 'smart_college_assistant.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -505,26 +512,39 @@ def admin_blocks():
     if 'admin_logged_in' not in session:
         return redirect(url_for('admin_login'))
     
-    blocks = Block.query.all()
-    return render_template('admin_blocks.html', blocks=blocks)
+    try:
+        blocks = Block.query.all()
+        return render_template('admin_blocks.html', blocks=blocks)
+    except Exception as e:
+        print(f"Database query error in admin_blocks: {e}")
+        return render_template('admin_blocks.html', blocks=[])
 
 @app.route('/admin/faculty')
 def admin_faculty():
     if 'admin_logged_in' not in session:
         return redirect(url_for('admin_login'))
     
-    faculty = Faculty.query.all()
-    blocks = Block.query.all()
-    return render_template('admin_faculty.html', faculty=faculty, blocks=blocks)
+    try:
+        faculty = Faculty.query.all()
+        blocks = Block.query.all()
+        return render_template('admin_faculty.html', faculty=faculty, blocks=blocks)
+    except Exception as e:
+        print(f"Database query error in admin_faculty: {e}")
+        # Return empty lists if database query fails
+        return render_template('admin_faculty.html', faculty=[], blocks=[])
 
 @app.route('/admin/timetable')
 def admin_timetable():
     if 'admin_logged_in' not in session:
         return redirect(url_for('admin_login'))
     
-    timetable = Timetable.query.all()
-    faculty = Faculty.query.all()
-    return render_template('admin_timetable.html', timetable=timetable, faculty=faculty)
+    try:
+        timetable = Timetable.query.all()
+        faculty = Faculty.query.all()
+        return render_template('admin_timetable.html', timetable=timetable, faculty=faculty)
+    except Exception as e:
+        print(f"Database query error in admin_timetable: {e}")
+        return render_template('admin_timetable.html', timetable=[], faculty=[])
 
 @app.route('/admin/logout')
 def admin_logout():
@@ -1141,29 +1161,37 @@ def api_timetable_by_id(timetable_id):
 
 # Initialize database
 def create_tables():
-    db.create_all()
-    
-    # Create default admin user
-    if not Admin.query.filter_by(username='admin').first():
-        admin = Admin(
-            username='admin',
-            password_hash=generate_password_hash('admin123')
-        )
-        db.session.add(admin)
-        db.session.commit()
-    
-    # Add sample data
-    if Block.query.count() == 0:
-        sample_blocks = [
-            Block(name='AS Block', prefix='EW', description='Academic Sciences Block'),
-            Block(name='IB Block', prefix='WW', description='Information Technology Block'),
-            Block(name='SF Block', prefix='SF', description='Sunflower Block'),
-            Block(name='Mechanical Block', prefix='ME', description='Mechanical Engineering Block'),
-            Block(name='Research Park Block', prefix='AE', description='Aeronautical Engineering Block')
-        ]
-        for block in sample_blocks:
-            db.session.add(block)
-        db.session.commit()
+    try:
+        db.create_all()
+        print("✅ Database tables created/verified")
+        
+        # Create default admin user
+        if not Admin.query.filter_by(username='admin').first():
+            admin = Admin(
+                username='admin',
+                password_hash=generate_password_hash('admin123')
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("✅ Default admin user created")
+        
+        # Add sample data
+        if Block.query.count() == 0:
+            sample_blocks = [
+                Block(name='AS Block', prefix='EW', description='Academic Sciences Block'),
+                Block(name='IB Block', prefix='WW', description='Information Technology Block'),
+                Block(name='SF Block', prefix='SF', description='Sunflower Block'),
+                Block(name='Mechanical Block', prefix='ME', description='Mechanical Engineering Block'),
+                Block(name='Research Park Block', prefix='AE', description='Aeronautical Engineering Block')
+            ]
+            for block in sample_blocks:
+                db.session.add(block)
+            db.session.commit()
+            print("✅ Sample blocks added")
+    except Exception as e:
+        print(f"❌ Error initializing database: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == '__main__':
     with app.app_context():
