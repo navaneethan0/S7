@@ -1162,11 +1162,13 @@ def api_timetable_by_id(timetable_id):
 # Initialize database
 def create_tables():
     try:
+        print(f"📁 Database path: {app.config['SQLALCHEMY_DATABASE_URI']}")
         db.create_all()
         print("✅ Database tables created/verified")
         
         # Create default admin user
-        if not Admin.query.filter_by(username='admin').first():
+        admin_exists = Admin.query.filter_by(username='admin').first()
+        if not admin_exists:
             admin = Admin(
                 username='admin',
                 password_hash=generate_password_hash('admin123')
@@ -1174,9 +1176,13 @@ def create_tables():
             db.session.add(admin)
             db.session.commit()
             print("✅ Default admin user created")
+        else:
+            print("✅ Admin user already exists")
         
         # Add sample data
-        if Block.query.count() == 0:
+        block_count = Block.query.count()
+        print(f"📊 Current block count: {block_count}")
+        if block_count == 0:
             sample_blocks = [
                 Block(name='AS Block', prefix='EW', description='Academic Sciences Block'),
                 Block(name='IB Block', prefix='WW', description='Information Technology Block'),
@@ -1187,13 +1193,23 @@ def create_tables():
             for block in sample_blocks:
                 db.session.add(block)
             db.session.commit()
-            print("✅ Sample blocks added")
+            print(f"✅ Sample blocks added: {len(sample_blocks)} blocks")
+        else:
+            print(f"✅ Blocks already exist: {block_count} blocks")
+            
+        # Verify data
+        final_block_count = Block.query.count()
+        final_faculty_count = Faculty.query.count()
+        final_timetable_count = Timetable.query.count()
+        print(f"📊 Database status - Blocks: {final_block_count}, Faculty: {final_faculty_count}, Timetable: {final_timetable_count}")
     except Exception as e:
         print(f"❌ Error initializing database: {e}")
         import traceback
         traceback.print_exc()
 
+# Initialize database on app startup (works for both direct run and WSGI servers)
+with app.app_context():
+    create_tables()
+
 if __name__ == '__main__':
-    with app.app_context():
-        create_tables()
     app.run(debug=True, host='0.0.0.0', port=5001)
