@@ -279,7 +279,9 @@ class EnhancedNLPProcessor:
                 r'\b(timetable|time table|schedule|class(?:es)?|period|slot|slots)\b',
                 r'\b(today|tomorrow|day after tomorrow)\b',
                 r'\b(when|what time|which period)\b',
-                r'\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b'
+                r'\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b',
+                r'\b(generate|show|get|display|view)\b.*\b(timetable|schedule|class)\b',
+                r'\b(cse|ece|mech|ae|it|aids)\b.*\b(timetable|schedule)\b'
             ],
             'location_query': [
                 r'\b(where|location|find|locate)\b',
@@ -663,7 +665,7 @@ def handle_intent_enhanced(intent, message, confidence):
             elif any(word in message_lower for word in ['where', 'locate', 'find', 'ew', 'me', 'sf', 'room']):
                 print("🔄 Inferring location_query from message content")
                 return handle_find_room_enhanced(message)
-            elif any(word in message_lower for word in ['timetable', 'schedule', 'class']):
+            elif any(word in message_lower for word in ['timetable', 'schedule', 'class', 'time table', 'generate', 'show timetable']):
                 print("🔄 Inferring timetable_info from message content")
                 return handle_timetable_enhanced(message)
             else:
@@ -966,27 +968,40 @@ def handle_faculty_info_enhanced(message):
 def handle_timetable_enhanced(message):
     """Enhanced timetable queries with fuzzy department and day matching"""
     try:
+        print(f"📅 Processing timetable query: '{message}'")
+        
         # Ensure database is initialized
         with app.app_context():
             db.create_all()
+            # Check if timetable table has any data
+            total_entries = Timetable.query.count()
+            print(f"📊 Total timetable entries in database: {total_entries}")
         
         # Determine department
         departments = ['CSE', 'ECE', 'MECH', 'AE', 'IT', 'AIDS']
         found_dept = None
+        message_lower = message.lower()
+        
+        # Direct department matching
         for dept in departments:
-            if dept.lower() in message.lower():
+            if dept.lower() in message_lower:
                 found_dept = dept
+                print(f"✅ Found department: {found_dept}")
                 break
+        
+        # Try fuzzy matching if not found
         if not found_dept:
             try:
                 dept_list = [dept.lower() for dept in departments]
-                fuzzy_dept, _ = nlp_processor.fuzzy_match_department(message, dept_list, threshold=50)
+                fuzzy_dept, score = nlp_processor.fuzzy_match_department(message, dept_list, threshold=50)
                 if fuzzy_dept:
                     found_dept = fuzzy_dept.upper()
+                    print(f"✅ Fuzzy matched department: {found_dept} (score: {score})")
             except Exception as e:
-                print(f"Fuzzy department matching error: {e}")
+                print(f"⚠️ Fuzzy department matching error: {e}")
 
         if not found_dept:
+            print("❌ No department found in message")
             return "Please specify a department (CSE, ECE, MECH, AE, IT, AIDS) to get timetable information"
 
         # Determine day
@@ -1007,6 +1022,16 @@ def handle_timetable_enhanced(message):
         # Fetch timetable for department and day, ordered by time_slot
         try:
             with app.app_context():
+                # First, check all entries for the department
+                all_dept_entries = Timetable.query.filter_by(department=found_dept).all()
+                print(f"🔍 Total entries for {found_dept}: {len(all_dept_entries)}")
+                
+                if all_dept_entries:
+                    # Show available days
+                    available_days = set([e.day for e in all_dept_entries])
+                    print(f"📅 Available days for {found_dept}: {available_days}")
+                
+                # Query for specific day
                 entries = (Timetable.query
                            .filter_by(department=found_dept, day=day)
                            .order_by(Timetable.time_slot.asc())
@@ -1019,7 +1044,14 @@ def handle_timetable_enhanced(message):
             return "I'm having trouble accessing the timetable database. Please try again later."
 
         if not entries:
-            return f"No classes scheduled for {day} in {found_dept} department. Please add timetable entries through the admin panel."
+            # Check if there are any entries for this department on other days
+            with app.app_context():
+                other_day_entries = Timetable.query.filter_by(department=found_dept).all()
+                if other_day_entries:
+                    available_days = set([e.day for e in other_day_entries])
+                    return f"No classes scheduled for {day} in {found_dept} department.\n\nAvailable days: {', '.join(sorted(available_days))}\n\nPlease add timetable entries for {day} through the admin panel."
+                else:
+                    return f"No timetable entries found for {found_dept} department. Please add timetable entries through the admin panel."
 
         # Format response
         response_lines = [f"📅 **{found_dept} - {day} Timetable:**\n"]
