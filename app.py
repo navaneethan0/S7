@@ -966,6 +966,10 @@ def handle_faculty_info_enhanced(message):
 def handle_timetable_enhanced(message):
     """Enhanced timetable queries with fuzzy department and day matching"""
     try:
+        # Ensure database is initialized
+        with app.app_context():
+            db.create_all()
+        
         # Determine department
         departments = ['CSE', 'ECE', 'MECH', 'AE', 'IT', 'AIDS']
         found_dept = None
@@ -1002,16 +1006,20 @@ def handle_timetable_enhanced(message):
 
         # Fetch timetable for department and day, ordered by time_slot
         try:
-            entries = (Timetable.query
-                       .filter_by(department=found_dept, day=day)
-                       .order_by(Timetable.time_slot.asc())
-                       .all())
+            with app.app_context():
+                entries = (Timetable.query
+                           .filter_by(department=found_dept, day=day)
+                           .order_by(Timetable.time_slot.asc())
+                           .all())
+                print(f"🔍 Found {len(entries)} timetable entries for {found_dept} on {day}")
         except Exception as e:
-            print(f"Timetable query error: {e}")
+            print(f"❌ Timetable query error: {e}")
+            import traceback
+            traceback.print_exc()
             return "I'm having trouble accessing the timetable database. Please try again later."
 
         if not entries:
-            return f"No classes scheduled for {day} in {found_dept} department."
+            return f"No classes scheduled for {day} in {found_dept} department. Please add timetable entries through the admin panel."
 
         # Format response
         response_lines = [f"📅 **{found_dept} - {day} Timetable:**\n"]
