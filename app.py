@@ -796,50 +796,93 @@ def handle_help():
 def handle_find_room_enhanced(message):
     """Enhanced room location queries with fuzzy matching"""
     try:
+        # Ensure database is initialized
+        with app.app_context():
+            db.create_all()
+        
         entities = nlp_processor.extract_entities(message)
+        print(f"🔍 Extracted entities: {entities}")
         
         # Check for room codes in entities
         if entities['rooms']:
             room_code = entities['rooms'][0]
             prefix = room_code[:2]
+            print(f"🔍 Looking for room {room_code} with prefix {prefix}")
             
             try:
-                block = Block.query.filter_by(prefix=prefix).first()
-                if block:
-                    return f"📍 **{room_code}** is located in **{block.name}**\n\n{block.description or 'No additional information available.'}"
-                else:
-                    return f"❌ Sorry, I couldn't find information for room {room_code}"
+                with app.app_context():
+                    block = Block.query.filter_by(prefix=prefix).first()
+                    print(f"🔍 Block query result: {block}")
+                    if block:
+                        return f"📍 **{room_code}** is located in **{block.name}**\n\n{block.description or 'No additional information available.'}"
+                    else:
+                        # Check if any blocks exist
+                        block_count = Block.query.count()
+                        print(f"⚠️ No block found for prefix {prefix}. Total blocks in DB: {block_count}")
+                        return f"❌ Sorry, I couldn't find information for room {room_code}. Available blocks: {', '.join([b.prefix for b in Block.query.all()]) if block_count > 0 else 'None'}"
             except Exception as e:
-                print(f"Database query error: {e}")
+                print(f"❌ Database query error in handle_find_room_enhanced: {e}")
+                import traceback
+                traceback.print_exc()
                 return f"Please provide a valid room code (e.g., EW212, ME101, SF302)"
         
         # Check for block prefixes
         if entities['blocks']:
             block_prefix = entities['blocks'][0]
             try:
-                block = Block.query.filter_by(prefix=block_prefix).first()
-                if block:
-                    return f"📍 **{block_prefix} Block** refers to **{block.name}**\n\n{block.description or 'No additional information available.'}"
+                with app.app_context():
+                    block = Block.query.filter_by(prefix=block_prefix).first()
+                    if block:
+                        return f"📍 **{block_prefix} Block** refers to **{block.name}**\n\n{block.description or 'No additional information available.'}"
             except Exception as e:
-                print(f"Database query error: {e}")
+                print(f"❌ Database query error: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Try to extract room code directly from message if entities didn't catch it
+        import re
+        room_match = re.search(r'\b([A-Z]{2}\d{3})\b', message.upper())
+        if room_match:
+            room_code = room_match.group(1)
+            prefix = room_code[:2]
+            print(f"🔍 Direct regex match found room {room_code}")
+            try:
+                with app.app_context():
+                    block = Block.query.filter_by(prefix=prefix).first()
+                    if block:
+                        return f"📍 **{room_code}** is located in **{block.name}**\n\n{block.description or 'No additional information available.'}"
+            except Exception as e:
+                print(f"❌ Database query error: {e}")
         
         return "Please provide a valid room code (e.g., EW212, ME101, SF302) or block prefix (EW, WW, SF, ME, AE, AS)"
     except Exception as e:
-        print(f"Error in handle_find_room_enhanced: {e}")
+        print(f"❌ Error in handle_find_room_enhanced: {e}")
+        import traceback
+        traceback.print_exc()
         return "I'm having trouble processing your request. Please try again with a room code like EW212 or ME101."
 
 def handle_faculty_info_enhanced(message):
     """Enhanced faculty information with fuzzy matching and semantic search"""
     try:
+        # Ensure database is initialized
+        with app.app_context():
+            db.create_all()
+        
         # Get all faculty from database
         try:
-            all_faculty = Faculty.query.all()
+            with app.app_context():
+                all_faculty = Faculty.query.all()
+                faculty_count = len(all_faculty)
+                print(f"🔍 Retrieved {faculty_count} faculty from database")
         except Exception as e:
-            print(f"Database query error: {e}")
+            print(f"❌ Database query error: {e}")
+            import traceback
+            traceback.print_exc()
             return "I'm having trouble accessing the faculty database. Please try again later."
         
         if not all_faculty:
-            return "No faculty information available in the database."
+            print("⚠️ No faculty found in database")
+            return "No faculty information available in the database. Please add faculty through the admin panel."
         
         # Try fuzzy matching first
         try:
@@ -893,21 +936,25 @@ def handle_faculty_info_enhanced(message):
             
             if found_dept:
                 try:
-                    faculty = Faculty.query.filter_by(department=found_dept).all()
-                    if faculty:
-                        response = f"👨‍🏫 **{found_dept} Faculty:**\n\n"
-                        for f in faculty:
-                            response += f"• **{f.name}** - {f.designation or 'Faculty'}\n"
-                            if f.contact:
-                                response += f"  📞 {f.contact}\n"
-                            if f.room_number:
-                                response += f"  🏢 Room: {f.room_number}\n"
-                            response += "\n"
-                        return response
-                    else:
-                        return f"No faculty found for {found_dept} department"
+                    with app.app_context():
+                        faculty = Faculty.query.filter_by(department=found_dept).all()
+                        print(f"🔍 Found {len(faculty)} faculty for department {found_dept}")
+                        if faculty:
+                            response = f"👨‍🏫 **{found_dept} Faculty:**\n\n"
+                            for f in faculty:
+                                response += f"• **{f.name}** - {f.designation or 'Faculty'}\n"
+                                if f.contact:
+                                    response += f"  📞 {f.contact}\n"
+                                if f.room_number:
+                                    response += f"  🏢 Room: {f.room_number}\n"
+                                response += "\n"
+                            return response
+                        else:
+                            return f"No faculty found for {found_dept} department. Please add faculty through the admin panel."
                 except Exception as e:
-                    print(f"Department query error: {e}")
+                    print(f"❌ Department query error: {e}")
+                    import traceback
+                    traceback.print_exc()
         except Exception as e:
             print(f"Entity extraction error: {e}")
         
