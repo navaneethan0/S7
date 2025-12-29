@@ -1318,9 +1318,31 @@ def api_timetable_by_id(timetable_id):
 # Initialize database
 def create_tables():
     try:
-        print(f"📁 Database path: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        db_path_uri = app.config['SQLALCHEMY_DATABASE_URI']
+        print(f"📁 Database path: {db_path_uri}")
+        db_path_abs = db_path_uri.replace('sqlite:///', '')
+        print(f"📁 Database file path: {db_path_abs}")
+        print(f"📁 Database file exists before create_all: {os.path.exists(db_path_abs)}")
+        
         db.create_all()
         print("✅ Database tables created/verified")
+        print(f"📁 Database file exists after create_all: {os.path.exists(db_path_abs)}")
+        
+        # Enable WAL mode for better SQLite concurrency
+        try:
+            import sqlite3
+            if os.path.exists(db_path_abs):
+                conn = sqlite3.connect(db_path_abs)
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.execute("PRAGMA foreign_keys=ON")
+                conn.commit()
+                cursor.close()
+                conn.close()
+                print("✅ SQLite WAL mode enabled")
+        except Exception as e:
+            print(f"⚠️ Could not enable WAL mode: {e}")
         
         # Create default admin user
         admin_exists = Admin.query.filter_by(username='admin').first()
