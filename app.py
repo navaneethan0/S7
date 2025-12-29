@@ -1073,42 +1073,53 @@ def handle_timetable_enhanced(message):
 
 def handle_department_info_enhanced(message):
     """Enhanced department information with fuzzy matching"""
-    entities = nlp_processor.extract_entities(message)
-    
-    # Try to find department
-    departments = ['CSE', 'ECE', 'MECH', 'AE', 'IT', 'AIDS']
-    found_dept = None
-    
-    # Check for exact department matches
-    for dept in departments:
-        if dept.lower() in message.lower():
-            found_dept = dept
-            break
-    
-    # If no exact match, try fuzzy matching
-    if not found_dept:
-        dept_list = [dept.lower() for dept in departments]
-        fuzzy_dept, fuzzy_score = nlp_processor.fuzzy_match_department(message, dept_list, threshold=50)
-        if fuzzy_dept:
-            found_dept = fuzzy_dept.upper()
-    
-    if found_dept:
-        # Get faculty count for the department
-        faculty_count = Faculty.query.filter_by(department=found_dept).count()
+    try:
+        # Ensure database is initialized
+        with app.app_context():
+            db.create_all()
         
-        response = f"🏛️ **{found_dept} Department Information:**\n\n"
-        response += f"**Faculty Count:** {faculty_count}\n\n"
+        entities = nlp_processor.extract_entities(message)
         
-        # Get some sample faculty
-        sample_faculty = Faculty.query.filter_by(department=found_dept).limit(3).all()
-        if sample_faculty:
-            response += "**Sample Faculty:**\n"
-            for faculty in sample_faculty:
-                response += f"• {faculty.name} - {faculty.designation or 'Faculty'}\n"
+        # Try to find department
+        departments = ['CSE', 'ECE', 'MECH', 'AE', 'IT', 'AIDS']
+        found_dept = None
         
-        return response
-    
-    return "Please specify a department (CSE, ECE, MECH, AE, IT, AIDS) to get department information"
+        # Check for exact department matches
+        for dept in departments:
+            if dept.lower() in message.lower():
+                found_dept = dept
+                break
+        
+        # If no exact match, try fuzzy matching
+        if not found_dept:
+            dept_list = [dept.lower() for dept in departments]
+            fuzzy_dept, fuzzy_score = nlp_processor.fuzzy_match_department(message, dept_list, threshold=50)
+            if fuzzy_dept:
+                found_dept = fuzzy_dept.upper()
+        
+        if found_dept:
+            # Get faculty count for the department
+            with app.app_context():
+                faculty_count = Faculty.query.filter_by(department=found_dept).count()
+                
+                response = f"🏛️ **{found_dept} Department Information:**\n\n"
+                response += f"**Faculty Count:** {faculty_count}\n\n"
+                
+                # Get some sample faculty
+                sample_faculty = Faculty.query.filter_by(department=found_dept).limit(3).all()
+                if sample_faculty:
+                    response += "**Sample Faculty:**\n"
+                    for faculty in sample_faculty:
+                        response += f"• {faculty.name} - {faculty.designation or 'Faculty'}\n"
+            
+            return response
+        
+        return "Please specify a department (CSE, ECE, MECH, AE, IT, AIDS) to get department information"
+    except Exception as e:
+        print(f"❌ Error in handle_department_info_enhanced: {e}")
+        import traceback
+        traceback.print_exc()
+        return "I'm having trouble accessing department information. Please try again later."
 
 # Auto-suggestion API endpoint
 @app.route('/api/suggestions', methods=['POST'])
