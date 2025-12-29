@@ -337,8 +337,15 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 instance_path = os.path.join(basedir, 'instance')
 os.makedirs(instance_path, exist_ok=True)
 db_path = os.path.join(instance_path, 'smart_college_assistant.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+# Use absolute path and ensure proper permissions
+db_path_abs = os.path.abspath(db_path)
+# SQLite configuration for Render - use WAL mode for better concurrency
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path_abs}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+print(f"📁 Database configured at: {db_path_abs}")
+print(f"📁 Database exists: {os.path.exists(db_path_abs)}")
 
 db = SQLAlchemy(app)
 
